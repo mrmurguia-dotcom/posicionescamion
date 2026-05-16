@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora de Carga - Grupo Peñaflor</title>
+    <title>posiciones camion - logistica GP</title>
     <style>
         :root {
             --primary: #2c3e50;
@@ -151,8 +151,8 @@
         
         <label>Capacidad del Camión:</label>
         <select id="tipoCamion" onchange="dibujarCamion()">
-            <option value="26">Sider 26 Posiciones</option>
-            <option value="30">Sider 30 Posiciones</option>
+            <option value="26">Camion 26 Posiciones</option>
+            <option value="30">Camion 30 Posiciones</option>
         </select>
 
         <div class="toggle-container">
@@ -286,7 +286,7 @@
         // UI
         document.getElementById('resultadoTexto').innerHTML = `
             <span class="resumen-val">${ocupacionTotal} / ${capacidad} Posiciones</span>
-            Pallets: ${posPallets} | Picking: ${posAntares + posPickingGen}
+            Pallets Completos: ${posPallets} | Picking: ${posAntares + posPickingGen}
         `;
 
         dibujarCamion();

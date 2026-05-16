@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>posiciones camion - logistica GP</title>
+    <title>Calculadora de Carga - Grupo Peñaflor</title>
     <style>
         :root {
             --primary: #2c3e50;
@@ -57,9 +57,7 @@
             border-radius: 8px;
             font-family: 'Consolas', monospace;
             box-sizing: border-box;
-            transition: border-color 0.3s;
         }
-        textarea:focus { border-color: var(--secondary); outline: none; }
 
         select, .btn {
             width: 100%;
@@ -77,11 +75,7 @@
             margin-top: 25px;
             font-weight: bold;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            transition: transform 0.1s, background 0.3s;
         }
-        .btn:hover { background-color: #219150; }
-        .btn:active { transform: scale(0.98); }
 
         .toggle-container {
             display: flex;
@@ -103,7 +97,6 @@
         }
         .resumen-val { font-size: 24px; display: block; margin-bottom: 5px; color: #55efc4; }
 
-        /* Estilos del Camión */
         .camion-wrapper {
             border: 5px solid var(--primary);
             border-radius: 15px 15px 5px 5px;
@@ -121,7 +114,6 @@
             justify-content: center;
             color: white;
             font-weight: bold;
-            font-size: 14px;
         }
         .grid-posiciones { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
         .posicion {
@@ -131,15 +123,9 @@
             background-color: #fff;
             display: flex; align-items: center; justify-content: center;
             font-size: 13px; font-weight: bold; color: #95a5a6;
-            transition: all 0.3s;
         }
-        .posicion.libre { background-color: #fff; color: #bdc3c7; border-style: dashed; }
         .posicion.ocupada-pallet { background-color: var(--danger); border-color: #c0392b; color: white; }
         .posicion.ocupada-picking { background-color: var(--accent); border-color: #d35400; color: white; }
-
-        .referencias { display: flex; justify-content: space-around; font-size: 13px; margin-top: 15px; }
-        .ref-item { display: flex; align-items: center; gap: 6px; }
-        .box { width: 16px; height: 16px; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -147,7 +133,7 @@
 <div class="container">
     <div class="panel-inputs">
         <h2>🚚 Planificador de Carga</h2>
-        <div id="statusDB" class="status-db">Cargando base de datos desde Google...</div>
+        <div id="statusDB" class="status-db">Cargando base de datos...</div>
         
         <label>Capacidad del Camión:</label>
         <select id="tipoCamion" onchange="dibujarCamion()">
@@ -161,13 +147,13 @@
         </div>
 
         <label>Pegue aquí (SKU | Descripción | Cantidad):</label>
-        <textarea id="datosCarga" placeholder="Pegue las columnas directamente de Excel..."></textarea>
+        <textarea id="datosCarga" placeholder="Pegue las columnas de Excel..."></textarea>
 
         <button class="btn" onclick="procesarCarga()">Calcular Ocupación</button>
 
         <div class="resumen" id="resultadoTexto">
             <span class="resumen-val">0 / -- Posiciones</span>
-            Esperando datos de carga...
+            Esperando datos...
         </div>
     </div>
 
@@ -176,28 +162,20 @@
             <div class="cabina">FRENTE (CABINA)</div>
             <div id="gridCamion" class="grid-posiciones"></div>
         </div>
-        <div class="referencias">
-            <div class="ref-item"><div class="box" style="border: 2px dashed #bdc3c7;"></div> Libre</div>
-            <div class="ref-item"><div class="box" style="background: var(--danger);"></div> Pallet</div>
-            <div class="ref-item"><div class="box" style="background: var(--accent);"></div> Picking</div>
-        </div>
     </div>
 </div>
 
 <script>
     let maestroDB = [];
-    // URL de exportación CSV de tu Google Sheet específica
+    // URL de tu Google Sheet
     const SHEET_URL = "https://docs.google.com/spreadsheets/d/1WNqYMnscJEE-w45ViY4UYcvzJaKq5Um9/export?format=csv&gid=975420458";
 
     async function cargarBaseDeDatos() {
         const statusDiv = document.getElementById('statusDB');
         try {
             const response = await fetch(SHEET_URL);
-            if (!response.ok) throw new Error("No se pudo acceder al archivo");
             const data = await response.text();
-            
-            // Parseador simple de CSV
-            const filas = data.split('\n').slice(1); // Omitir encabezado
+            const filas = data.split('\n').slice(1); 
             maestroDB = filas.map(fila => {
                 const cols = fila.split(',');
                 if (cols.length < 4) return null;
@@ -206,23 +184,18 @@
                     desc: cols[1].trim(),
                     tipo: cols[2].trim(),
                     um: parseInt(cols[3]),
-                    apilable: cols[4] ? cols[4].trim().toUpperCase() : 'S' // Por defecto apilable
+                    apilable: cols[4] ? cols[4].trim().toUpperCase() : 'S'
                 };
             }).filter(i => i !== null);
-
             statusDiv.innerText = `✅ Base de datos conectada (${maestroDB.length} productos)`;
             statusDiv.className = "status-db status-success";
-        } catch (error) {
-            console.error(error);
-            statusDiv.innerText = "❌ Error: Asegúrate de que el Google Sheet sea público";
+        } catch (e) {
+            statusDiv.innerText = "❌ Error de conexión";
             statusDiv.className = "status-db status-error";
         }
     }
 
-    window.onload = () => {
-        dibujarCamion();
-        cargarBaseDeDatos();
-    };
+    window.onload = () => { dibujarCamion(); cargarBaseDeDatos(); };
 
     function dibujarCamion() {
         const capacidad = parseInt(document.getElementById('tipoCamion').value);
@@ -230,7 +203,7 @@
         grid.innerHTML = ''; 
         for(let i = 1; i <= capacidad; i++) {
             const pos = document.createElement('div');
-            pos.className = 'posicion libre';
+            pos.className = 'posicion';
             pos.id = 'pos-' + i;
             pos.innerText = i;
             grid.appendChild(pos);
@@ -242,7 +215,7 @@
         const usarBajada = document.getElementById('checkBajada').checked;
         const capacidad = parseInt(document.getElementById('tipoCamion').value);
         
-        if (!texto) return alert("Pegue los datos del pedido");
+        if (!texto) return;
 
         const lineas = texto.split('\n');
         let palletsApilables = 0;
@@ -256,34 +229,44 @@
 
             const sku = columnas[0].trim();
             const desc = columnas[1].trim().toUpperCase();
-            const cant = parseInt(columnas[2].trim());
-            if (isNaN(cant)) return;
+            let cant = parseInt(columnas[2].trim());
 
-            // Lógica de búsqueda
             let reglas = maestroDB.filter(i => i.sku === sku);
-            let match = null;
+            let reglaFinal = null;
 
+            // Selección de regla según prioridad
             if (usarBajada) {
-                match = reglas.find(r => r.tipo.toLowerCase().includes("bajada") && r.um === cant);
+                reglaFinal = reglas.find(r => r.tipo.toLowerCase().includes("bajada"));
             }
-            if (!match) {
-                match = reglas.find(r => r.tipo.toLowerCase().includes("terminado") && r.um === cant);
+            if (!reglaFinal) {
+                reglaFinal = reglas.find(r => r.tipo.toLowerCase().includes("terminado"));
             }
 
-            if (match) {
-                match.apilable === 'S' ? palletsApilables++ : palletsNoApilables++;
+            if (reglaFinal) {
+                // Cálculo de múltiplos de pallets
+                let numPallets = Math.floor(cant / reglaFinal.um);
+                let restoPicking = cant % reglaFinal.um;
+
+                if (numPallets > 0) {
+                    if (reglaFinal.apilable === 'S') {
+                        palletsApilables += numPallets;
+                    } else {
+                        palletsNoApilables += numPallets;
+                    }
+                }
+                if (restoPicking > 0) {
+                    desc.includes("ANTARES") ? cantAntares += restoPicking : cantPickingGen += restoPicking;
+                }
             } else {
                 desc.includes("ANTARES") ? cantAntares += cant : cantPickingGen += cant;
             }
         });
 
-        // Cálculos finales con redondeo CEIL
         const posPallets = palletsNoApilables + Math.ceil(palletsApilables / 2);
         const posAntares = Math.ceil(cantAntares / 450);
         const posPickingGen = Math.ceil(cantPickingGen / 150);
         const ocupacionTotal = posPallets + posAntares + posPickingGen;
 
-        // UI
         document.getElementById('resultadoTexto').innerHTML = `
             <span class="resumen-val">${ocupacionTotal} / ${capacidad} Posiciones</span>
             Pallets Completos: ${posPallets} | Picking: ${posAntares + posPickingGen}
@@ -300,6 +283,5 @@
         if (el) { el.className = 'posicion ' + clase; el.innerText = txt; }
     }
 </script>
-
 </body>
 </html>

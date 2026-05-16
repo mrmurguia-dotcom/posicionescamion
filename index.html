@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Carga - Grupo Peñaflor</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #27ae60;
+            --accent: #f39c12;
+            --danger: #e74c3c;
+            --bg: #f4f7f6;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+        .panel-inputs { flex: 1; min-width: 350px; }
+        .panel-visual { width: 340px; text-align: center; }
+        
+        h2 { margin-top: 0; color: var(--primary); border-bottom: 2px solid var(--bg); padding-bottom: 10px; }
+        
+        .status-db {
+            font-size: 13px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            background: #eee;
+            margin-bottom: 20px;
+            display: inline-block;
+            font-weight: 600;
+        }
+        .status-success { background: #d4edda; color: #155724; }
+        .status-error { background: #f8d7da; color: #721c24; }
+
+        label { font-weight: bold; display: block; margin-top: 15px; margin-bottom: 5px; color: var(--primary); }
+        
+        textarea {
+            width: 100%;
+            height: 180px;
+            padding: 12px;
+            border: 2px solid #dfe6e9;
+            border-radius: 8px;
+            font-family: 'Consolas', monospace;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+        textarea:focus { border-color: var(--secondary); outline: none; }
+
+        select, .btn {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 2px solid #dfe6e9;
+            font-size: 16px;
+            margin-top: 5px;
+        }
+        .btn {
+            background-color: var(--secondary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 25px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: transform 0.1s, background 0.3s;
+        }
+        .btn:hover { background-color: #219150; }
+        .btn:active { transform: scale(0.98); }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            margin-top: 20px;
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        .toggle-container input { width: 22px; height: 22px; margin-right: 12px; cursor: pointer; }
+
+        .resumen {
+            background: var(--primary);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 25px;
+        }
+        .resumen-val { font-size: 24px; display: block; margin-bottom: 5px; color: #55efc4; }
+
+        /* Estilos del Camión */
+        .camion-wrapper {
+            border: 5px solid var(--primary);
+            border-radius: 15px 15px 5px 5px;
+            padding: 15px;
+            background: #f1f2f6;
+            margin-top: 10px;
+        }
+        .cabina {
+            height: 45px;
+            background: var(--primary);
+            border-radius: 10px 10px 2px 2px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .grid-posiciones { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+        .posicion {
+            height: 40px;
+            border: 2px solid #bdc3c7;
+            border-radius: 6px;
+            background-color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: bold; color: #95a5a6;
+            transition: all 0.3s;
+        }
+        .posicion.libre { background-color: #fff; color: #bdc3c7; border-style: dashed; }
+        .posicion.ocupada-pallet { background-color: var(--danger); border-color: #c0392b; color: white; }
+        .posicion.ocupada-picking { background-color: var(--accent); border-color: #d35400; color: white; }
+
+        .referencias { display: flex; justify-content: space-around; font-size: 13px; margin-top: 15px; }
+        .ref-item { display: flex; align-items: center; gap: 6px; }
+        .box { width: 16px; height: 16px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="panel-inputs">
+        <h2>🚚 Planificador de Carga</h2>
+        <div id="statusDB" class="status-db">Cargando base de datos desde Google...</div>
+        
+        <label>Capacidad del Camión:</label>
+        <select id="tipoCamion" onchange="dibujarCamion()">
+            <option value="26">Sider 26 Posiciones</option>
+            <option value="30">Sider 30 Posiciones</option>
+        </select>
+
+        <div class="toggle-container">
+            <input type="checkbox" id="checkBajada">
+            <label for="checkBajada" style="margin:0; cursor:pointer;">Priorizar "Bajada de Camada"</label>
+        </div>
+
+        <label>Pegue aquí (SKU | Descripción | Cantidad):</label>
+        <textarea id="datosCarga" placeholder="Pegue las columnas directamente de Excel..."></textarea>
+
+        <button class="btn" onclick="procesarCarga()">Calcular Ocupación</button>
+
+        <div class="resumen" id="resultadoTexto">
+            <span class="resumen-val">0 / -- Posiciones</span>
+            Esperando datos de carga...
+        </div>
+    </div>
+
+    <div class="panel-visual">
+        <div class="camion-wrapper">
+            <div class="cabina">FRENTE (CABINA)</div>
+            <div id="gridCamion" class="grid-posiciones"></div>
+        </div>
+        <div class="referencias">
+            <div class="ref-item"><div class="box" style="border: 2px dashed #bdc3c7;"></div> Libre</div>
+            <div class="ref-item"><div class="box" style="background: var(--danger);"></div> Pallet</div>
+            <div class="ref-item"><div class="box" style="background: var(--accent);"></div> Picking</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let maestroDB = [];
+    // URL de exportación CSV de tu Google Sheet específica
+    const SHEET_URL = "https://docs.google.com/spreadsheets/d/1WNqYMnscJEE-w45ViY4UYcvzJaKq5Um9/export?format=csv&gid=975420458";
+
+    async function cargarBaseDeDatos() {
+        const statusDiv = document.getElementById('statusDB');
+        try {
+            const response = await fetch(SHEET_URL);
+            if (!response.ok) throw new Error("No se pudo acceder al archivo");
+            const data = await response.text();
+            
+            // Parseador simple de CSV
+            const filas = data.split('\n').slice(1); // Omitir encabezado
+            maestroDB = filas.map(fila => {
+                const cols = fila.split(',');
+                if (cols.length < 4) return null;
+                return {
+                    sku: cols[0].trim(),
+                    desc: cols[1].trim(),
+                    tipo: cols[2].trim(),
+                    um: parseInt(cols[3]),
+                    apilable: cols[4] ? cols[4].trim().toUpperCase() : 'S' // Por defecto apilable
+                };
+            }).filter(i => i !== null);
+
+            statusDiv.innerText = `✅ Base de datos conectada (${maestroDB.length} productos)`;
+            statusDiv.className = "status-db status-success";
+        } catch (error) {
+            console.error(error);
+            statusDiv.innerText = "❌ Error: Asegúrate de que el Google Sheet sea público";
+            statusDiv.className = "status-db status-error";
+        }
+    }
+
+    window.onload = () => {
+        dibujarCamion();
+        cargarBaseDeDatos();
+    };
+
+    function dibujarCamion() {
+        const capacidad = parseInt(document.getElementById('tipoCamion').value);
+        const grid = document.getElementById('gridCamion');
+        grid.innerHTML = ''; 
+        for(let i = 1; i <= capacidad; i++) {
+            const pos = document.createElement('div');
+            pos.className = 'posicion libre';
+            pos.id = 'pos-' + i;
+            pos.innerText = i;
+            grid.appendChild(pos);
+        }
+    }
+
+    function procesarCarga() {
+        const texto = document.getElementById('datosCarga').value.trim();
+        const usarBajada = document.getElementById('checkBajada').checked;
+        const capacidad = parseInt(document.getElementById('tipoCamion').value);
+        
+        if (!texto) return alert("Pegue los datos del pedido");
+
+        const lineas = texto.split('\n');
+        let palletsApilables = 0;
+        let palletsNoApilables = 0;
+        let cantAntares = 0;
+        let cantPickingGen = 0;
+
+        lineas.forEach(linea => {
+            const columnas = linea.split('\t'); 
+            if (columnas.length < 3) return; 
+
+            const sku = columnas[0].trim();
+            const desc = columnas[1].trim().toUpperCase();
+            const cant = parseInt(columnas[2].trim());
+            if (isNaN(cant)) return;
+
+            // Lógica de búsqueda
+            let reglas = maestroDB.filter(i => i.sku === sku);
+            let match = null;
+
+            if (usarBajada) {
+                match = reglas.find(r => r.tipo.toLowerCase().includes("bajada") && r.um === cant);
+            }
+            if (!match) {
+                match = reglas.find(r => r.tipo.toLowerCase().includes("terminado") && r.um === cant);
+            }
+
+            if (match) {
+                match.apilable === 'S' ? palletsApilables++ : palletsNoApilables++;
+            } else {
+                desc.includes("ANTARES") ? cantAntares += cant : cantPickingGen += cant;
+            }
+        });
+
+        // Cálculos finales con redondeo CEIL
+        const posPallets = palletsNoApilables + Math.ceil(palletsApilables / 2);
+        const posAntares = Math.ceil(cantAntares / 450);
+        const posPickingGen = Math.ceil(cantPickingGen / 150);
+        const ocupacionTotal = posPallets + posAntares + posPickingGen;
+
+        // UI
+        document.getElementById('resultadoTexto').innerHTML = `
+            <span class="resumen-val">${ocupacionTotal} / ${capacidad} Posiciones</span>
+            Pallets: ${posPallets} | Picking: ${posAntares + posPickingGen}
+        `;
+
+        dibujarCamion();
+        let p = 1;
+        for(let i=0; i<posPallets; i++) pintar(p++, 'ocupada-pallet', 'P');
+        for(let i=0; i<(posAntares+posPickingGen); i++) pintar(p++, 'ocupada-picking', 'PK');
+    }
+
+    function pintar(id, clase, txt) {
+        const el = document.getElementById('pos-' + id);
+        if (el) { el.className = 'posicion ' + clase; el.innerText = txt; }
+    }
+</script>
+
+</body>
+</html>

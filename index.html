@@ -29,6 +29,7 @@
             display: flex;
             gap: 30px;
             flex-wrap: wrap;
+            position: relative;
         }
         .panel-inputs { flex: 1; min-width: 350px; }
         .panel-visual { width: 340px; text-align: center; }
@@ -126,6 +127,31 @@
         }
         .posicion.ocupada-pallet { background-color: var(--danger); border-color: #c0392b; color: white; }
         .posicion.ocupada-picking { background-color: var(--accent); border-color: #d35400; color: white; }
+
+        /* Estilos Ayuda Visual (Leyenda) */
+        .leyenda {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            padding: 10px;
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid #eee;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .leyenda-item { display: flex; align-items: center; gap: 5px; }
+        .color-box { width: 14px; height: 14px; border-radius: 3px; border: 1px solid #ccc; }
+
+        /* Estilo Sello Consultora */
+        .footer-brand {
+            width: 100%;
+            text-align: center;
+            font-size: 11px;
+            color: rgba(0, 0, 0, 0.35);
+            margin-top: 25px;
+            letter-spacing: 0.5px;
+        }
     </style>
 </head>
 <body>
@@ -162,12 +188,30 @@
             <div class="cabina">FRENTE (CABINA)</div>
             <div id="gridCamion" class="grid-posiciones"></div>
         </div>
+
+        <div class="leyenda">
+            <div class="leyenda-item">
+                <div class="color-box" style="background: var(--danger);"></div>
+                <span>P: Pallet Cerrado</span>
+            </div>
+            <div class="leyenda-item">
+                <div class="color-box" style="background: var(--accent);"></div>
+                <span>PK: Picking</span>
+            </div>
+            <div class="leyenda-item">
+                <div class="color-box" style="background: #fff;"></div>
+                <span>Libre</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-brand">
+        interfaz creada por <b>M2 Consultora Digital</b>
     </div>
 </div>
 
 <script>
     let maestroDB = [];
-    // URL de tu Google Sheet
     const SHEET_URL = "https://docs.google.com/spreadsheets/d/1WNqYMnscJEE-w45ViY4UYcvzJaKq5Um9/export?format=csv&gid=975420458";
 
     async function cargarBaseDeDatos() {
@@ -234,7 +278,6 @@
             let reglas = maestroDB.filter(i => i.sku === sku);
             let reglaFinal = null;
 
-            // Selección de regla según prioridad
             if (usarBajada) {
                 reglaFinal = reglas.find(r => r.tipo.toLowerCase().includes("bajada"));
             }
@@ -243,7 +286,6 @@
             }
 
             if (reglaFinal) {
-                // Cálculo de múltiplos de pallets
                 let numPallets = Math.floor(cant / reglaFinal.um);
                 let restoPicking = cant % reglaFinal.um;
 

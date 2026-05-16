@@ -143,7 +143,7 @@
 
         <div class="toggle-container">
             <input type="checkbox" id="checkBajada">
-            <label for="checkBajada" style="margin:0; cursor:pointer;">Priorizar "Bajada de Camada"</label>
+            <label for="checkBajada" style="margin:0; cursor:pointer;">Activar "Bajada de Camada"</label>
         </div>
 
         <label>Pegue aquí (SKU | Descripción | Cantidad):</label>
@@ -269,7 +269,7 @@
 
         document.getElementById('resultadoTexto').innerHTML = `
             <span class="resumen-val">${ocupacionTotal} / ${capacidad} Posiciones</span>
-            Pallets Completos: ${posPallets} | Picking: ${posAntares + posPickingGen}
+            Pallets Cerrados: ${posPallets} | Picking: ${posAntares + posPickingGen}
         `;
 
         dibujarCamion();

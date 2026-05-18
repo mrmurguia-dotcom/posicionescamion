@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Planificador de Carga - GP</title>
+    <title>Planificador de Carga - Logistica GP</title>
     <style>
         :root {
             --primary: #2c3e50;
@@ -50,15 +50,15 @@
 
         label { font-weight: bold; display: block; margin-top: 15px; margin-bottom: 5px; color: var(--primary); }
         
-        textarea {
+        textarea, input[type="text"] {
             width: 100%;
-            height: 180px;
             padding: 12px;
             border: 2px solid #dfe6e9;
             border-radius: 8px;
-            font-family: 'Consolas', monospace;
+            font-family: 'Segoe UI', sans-serif;
             box-sizing: border-box;
         }
+        textarea { height: 150px; font-family: 'Consolas', monospace; }
 
         select, .btn {
             width: 100%;
@@ -80,14 +80,19 @@
 
         .toggle-container {
             display: flex;
-            align-items: center;
+            flex-direction: column;
             margin-top: 20px;
             background: #f8f9fa;
-            padding: 12px;
+            padding: 15px;
             border-radius: 8px;
             border: 1px solid #dee2e6;
+            gap: 10px;
         }
-        .toggle-container input { width: 22px; height: 22px; margin-right: 12px; cursor: pointer; }
+        .toggle-row { display: flex; align-items: center; }
+        .toggle-container input[type="checkbox"] { width: 22px; height: 22px; margin-right: 12px; cursor: pointer; }
+        
+        #inputCliente { transition: all 0.3s ease; }
+        #inputCliente:disabled { background: #e9ecef; cursor: not-allowed; opacity: 0.6; }
 
         .resumen {
             background: var(--primary);
@@ -128,7 +133,6 @@
         .posicion.ocupada-pallet { background-color: var(--danger); border-color: #c0392b; color: white; }
         .posicion.ocupada-picking { background-color: var(--accent); border-color: #d35400; color: white; }
 
-        /* Estilos Ayuda Visual (Leyenda) */
         .leyenda {
             display: flex;
             justify-content: space-around;
@@ -143,7 +147,6 @@
         .leyenda-item { display: flex; align-items: center; gap: 5px; }
         .color-box { width: 14px; height: 14px; border-radius: 3px; border: 1px solid #ccc; }
 
-        /* Estilo Sello Consultora */
         .footer-brand {
             width: 100%;
             text-align: center;
@@ -168,8 +171,14 @@
         </select>
 
         <div class="toggle-container">
-            <input type="checkbox" id="checkBajada">
-            <label for="checkBajada" style="margin:0; cursor:pointer;">Activar "Bajada de Camada"</label>
+            <div class="toggle-row">
+                <input type="checkbox" id="checkBajada" onchange="toggleCliente()">
+                <label for="checkBajada" style="margin:0; cursor:pointer;">Activar "Bajada de Camada"</label>
+            </div>
+            <div id="clienteSection">
+                <label style="margin-top:5px; font-size: 12px;">Código de Cliente:</label>
+                <input type="text" id="inputCliente" placeholder="Ej: 40946002" disabled>
+            </div>
         </div>
 
         <label>Pegue aquí (SKU | Descripción | Cantidad):</label>
@@ -212,6 +221,7 @@
 
 <script>
     let maestroDB = [];
+    // URL Actualizada para usar "Publicar en la web" y evitar error de carga
     const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSvbBEgpj51DnHCA7yVUmhEw86dukPoxz1sDCmpI3LrqB7JTIYXif4srZCYAzKmnEiziUWsxWE-7ANc/pub?gid=0&single=true&output=csv";
 
     async function cargarBaseDeDatos() {
@@ -228,7 +238,8 @@
                     desc: cols[1].trim(),
                     tipo: cols[2].trim(),
                     um: parseInt(cols[3]),
-                    apilable: cols[4] ? cols[4].trim().toUpperCase() : 'S'
+                    apilable: cols[4] ? cols[4].trim().toUpperCase() : 'S',
+                    cliente: cols[5] ? cols[5].trim() : '' // Nueva columna F
                 };
             }).filter(i => i !== null);
             statusDiv.innerText = `✅ Base de datos conectada (${maestroDB.length} productos)`;
@@ -237,6 +248,13 @@
             statusDiv.innerText = "❌ Error de conexión";
             statusDiv.className = "status-db status-error";
         }
+    }
+
+    function toggleCliente() {
+        const check = document.getElementById('checkBajada');
+        const input = document.getElementById('inputCliente');
+        input.disabled = !check.checked;
+        if(check.checked) input.focus();
     }
 
     window.onload = () => { dibujarCamion(); cargarBaseDeDatos(); };
@@ -257,6 +275,7 @@
     function procesarCarga() {
         const texto = document.getElementById('datosCarga').value.trim();
         const usarBajada = document.getElementById('checkBajada').checked;
+        const codCliente = document.getElementById('inputCliente').value.trim();
         const capacidad = parseInt(document.getElementById('tipoCamion').value);
         
         if (!texto) return;
@@ -278,9 +297,15 @@
             let reglas = maestroDB.filter(i => i.sku === sku);
             let reglaFinal = null;
 
-            if (usarBajada) {
-                reglaFinal = reglas.find(r => r.tipo.toLowerCase().includes("bajada"));
+            if (usarBajada && codCliente !== "") {
+                // Busca específicamente SKU + Bajada + Código de Cliente
+                reglaFinal = reglas.find(r => 
+                    r.tipo.toLowerCase().includes("bajada") && 
+                    r.cliente === codCliente
+                );
             }
+            
+            // Si no se usa bajada, o no se encontró regla específica para ese cliente, usar Producto Terminado
             if (!reglaFinal) {
                 reglaFinal = reglas.find(r => r.tipo.toLowerCase().includes("terminado"));
             }

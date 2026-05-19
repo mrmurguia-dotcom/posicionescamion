@@ -103,6 +103,25 @@
         }
         .resumen-val { font-size: 24px; display: block; margin-bottom: 5px; color: #55efc4; }
 
+        /* Estilos para el nuevo cuadro de pallets reales */
+        .resumen-real {
+            background: #fff;
+            color: var(--primary);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border: 2px dashed var(--primary);
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .resumen-real-val { 
+            font-size: 20px; 
+            display: block; 
+            margin-bottom: 5px; 
+            color: var(--primary); 
+            font-weight: bold;
+        }
+
         .camion-wrapper {
             border: 5px solid var(--primary);
             border-radius: 15px 15px 5px 5px;
@@ -211,6 +230,11 @@
                 <div class="color-box" style="background: #fff;"></div>
                 <span>Libre</span>
             </div>
+        </div>
+
+        <div class="resumen-real" id="resultadoPalletsReales">
+            <span class="resumen-real-val">0 Pallets Físicos</span>
+            Cerrados: 0 | Picking: 0
         </div>
     </div>
 
@@ -333,10 +357,22 @@
         const posAntares = Math.ceil(cantAntares / 450);
         const posPickingGen = Math.ceil(cantPickingGen / 150);
         const ocupacionTotal = posPallets + posAntares + posPickingGen;
+        
+        // Cálculo de Pallets Reales (Físicos)
+        const palletsFisicosCerrados = palletsApilables + palletsNoApilables;
+        const palletsFisicosPicking = posAntares + posPickingGen;
+        const totalPalletsFisicos = palletsFisicosCerrados + palletsFisicosPicking;
 
+        // Actualizar resumen de Posiciones
         document.getElementById('resultadoTexto').innerHTML = `
             <span class="resumen-val">${ocupacionTotal} / ${capacidad} Posiciones</span>
             Pallets Cerrados: ${posPallets} | Picking: ${posAntares + posPickingGen}
+        `;
+
+        // Actualizar resumen de Pallets Físicos Reales
+        document.getElementById('resultadoPalletsReales').innerHTML = `
+            <span class="resumen-real-val">${totalPalletsFisicos} Pallets Físicos</span>
+            Cerrados: ${palletsFisicosCerrados} | Picking: ${palletsFisicosPicking}
         `;
 
         dibujarCamion();

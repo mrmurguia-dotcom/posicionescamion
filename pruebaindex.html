@@ -91,6 +91,25 @@
             text-transform: uppercase;
         }
 
+        .btn-secondary {
+            display: inline-block;
+            text-align: center;
+            text-decoration: none;
+            background-color: #0f9d58;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 15px;
+            box-sizing: border-box;
+            width: 100%;
+            transition: background 0.2s ease;
+        }
+        .btn-secondary:hover {
+            background-color: #0b8043;
+        }
+
         .toggle-container {
             display: flex;
             flex-direction: column;
@@ -221,6 +240,10 @@
 
         <button class="btn" onclick="procesarCarga()">Calcular Ocupación</button>
 
+        <a href="https://docs.google.com/spreadsheets/d/1aUPqoIhEWY4C3fIK2pkXDgtjf0HSONOOAQjIyDFj_e4/edit?usp=drive_link" target="_blank" class="btn-secondary">
+            📊 Editar Base de Datos
+        </a>
+
         <div class="resumen" id="resultadoTexto">
             <span class="resumen-val">0 / -- Posiciones</span>
             Esperando datos...
@@ -267,7 +290,6 @@
     async function cargarBaseDeDatos() {
         const statusDiv = document.getElementById('statusDB');
         try {
-            // Se intenta cargar de forma directa o vía proxy si se ejecuta de forma local
             let response = await fetch(SHEET_URL).catch(() => fetch(PROXY_URL));
             if (!response.ok) response = await fetch(PROXY_URL);
 

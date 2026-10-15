@@ -262,11 +262,15 @@
 <script>
     let maestroDB = [];
     const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSvbBEgpj51DnHCA7yVUmhEw86dukPoxz1sDCmpI3LrqB7JTIYXif4srZCYAzKmnEiziUWsxWE-7ANc/pub?gid=0&single=true&output=csv";
+    const PROXY_URL = "https://api.allorigins.win/raw?url=" + encodeURIComponent(SHEET_URL);
 
     async function cargarBaseDeDatos() {
         const statusDiv = document.getElementById('statusDB');
         try {
-            const response = await fetch(SHEET_URL);
+            // Se intenta cargar de forma directa o vía proxy si se ejecuta de forma local
+            let response = await fetch(SHEET_URL).catch(() => fetch(PROXY_URL));
+            if (!response.ok) response = await fetch(PROXY_URL);
+
             const data = await response.text();
             const filas = data.split('\n').slice(1); 
             maestroDB = filas.map(fila => {
@@ -338,15 +342,16 @@
             const desc = columnas[1].trim().toUpperCase();
             let cant = parseInt(columnas[2].trim());
 
-            if (!sku) return;
+            if (!sku || isNaN(cant)) return;
 
             let reglas = maestroDB.filter(i => i.sku === sku);
 
-            // Verificar si el SKU existe en la base de datos
+            // Si el SKU no existe en la base de datos, lo registramos y NO se procesa
             if (reglas.length === 0) {
                 if (!skusNoEncontrados.includes(sku)) {
                     skusNoEncontrados.push(sku);
                 }
+                return;
             }
 
             let reglaFinal = null;
@@ -376,27 +381,28 @@
                 if (restoPicking > 0) {
                     desc.includes("ANTARES") ? cantAntares += restoPicking : cantPickingGen += restoPicking;
                 }
-            } else {
-                desc.includes("ANTARES") ? cantAntares += cant : cantPickingGen += cant;
             }
         });
 
         // Mostrar advertencia si existen SKUs fuera de la BD
         if (skusNoEncontrados.length > 0) {
-            divAlerta.innerHTML = `⚠️ <b>Atención:</b> Los siguientes SKU no existen en la base de datos:
+            divAlerta.innerHTML = `⚠️ <b>Atención:</b> Los siguientes SKU no existen en la base de datos (se ignoraron del cálculo):
             <ul>${skusNoEncontrados.map(s => `<li><b>${s}</b></li>`).join('')}</ul>`;
             divAlerta.style.display = 'block';
         }
 
+        // Cálculo de Posiciones del Camión
         const posPallets = palletsNoApilables + Math.ceil(palletsApilables / 2);
         const posAntares = Math.ceil(cantAntares / 450);
         const posPickingGen = Math.ceil(cantPickingGen / 150);
         const ocupacionTotal = posPallets + posAntares + posPickingGen;
         
+        // Cálculo de Pallets Físicos
         const palletsFisicosCerrados = palletsApilables + palletsNoApilables;
         const palletsFisicosPicking = posAntares + posPickingGen;
         const totalPalletsFisicos = palletsFisicosCerrados + palletsFisicosPicking;
 
+        // Actualizar resumen
         document.getElementById('resultadoTexto').innerHTML = `
             <span class="resumen-val">${ocupacionTotal} / ${capacidad} Posiciones</span>
             Pallets Cerrados: ${posPallets} | Picking: ${posAntares + posPickingGen}
@@ -407,10 +413,11 @@
             Cerrados: ${palletsFisicosCerrados} | Picking: ${palletsFisicosPicking}
         `;
 
+        // Dibujar posiciones en el mapa
         dibujarCamion();
         let p = 1;
-        for(let i=0; i<posPallets; i++) pintar(p++, 'ocupada-pallet', 'P');
-        for(let i=0; i<(posAntares+posPickingGen); i++) pintar(p++, 'ocupada-picking', 'PK');
+        for(let i = 0; i < posPallets; i++) pintar(p++, 'ocupada-pallet', 'P');
+        for(let i = 0; i < (posAntares + posPickingGen); i++) pintar(p++, 'ocupada-picking', 'PK');
     }
 
     function pintar(id, clase, txt) {

@@ -47,6 +47,19 @@
         }
         .status-success { background: #d4edda; color: #155724; }
         .status-error { background: #f8d7da; color: #721c24; }
+        .status-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+        .status-warning ul {
+            margin: 5px 0 0 20px;
+            padding: 0;
+        }
 
         label { font-weight: bold; display: block; margin-top: 15px; margin-bottom: 5px; color: var(--primary); }
         
@@ -78,6 +91,25 @@
             text-transform: uppercase;
         }
 
+        .btn-secondary {
+            display: inline-block;
+            text-align: center;
+            text-decoration: none;
+            background-color: #0f9d58;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 15px;
+            box-sizing: border-box;
+            width: 100%;
+            transition: background 0.2s ease;
+        }
+        .btn-secondary:hover {
+            background-color: #0b8043;
+        }
+
         .toggle-container {
             display: flex;
             flex-direction: column;
@@ -103,7 +135,6 @@
         }
         .resumen-val { font-size: 24px; display: block; margin-bottom: 5px; color: #55efc4; }
 
-        /* Estilos para el nuevo cuadro de pallets reales */
         .resumen-real {
             background: #fff;
             color: var(--primary);
@@ -204,7 +235,14 @@
         <label>Pegue aquí (SKU | Descripción | Cantidad):</label>
         <textarea id="datosCarga" placeholder="Pegue las columnas de Excel..."></textarea>
 
+        <!-- Cuadro para avisar si existen SKUs no encontrados -->
+        <div id="alertaSkuInexistente" style="display: none;" class="status-warning"></div>
+
         <button class="btn" onclick="procesarCarga()">Calcular Ocupación</button>
+
+        <a href="https://docs.google.com/spreadsheets/d/1aUPqoIhEWY4C3fIK2pkXDgtjf0HSONOOAQjIyDFj_e4/edit?usp=drive_link" target="_blank" class="btn-secondary">
+            📊 Editar Base de Datos
+        </a>
 
         <div class="resumen" id="resultadoTexto">
             <span class="resumen-val">0 / -- Posiciones</span>
@@ -246,13 +284,15 @@
 
 <script>
     let maestroDB = [];
-    // URL Actualizada para usar "Publicar en la web" y evitar error de carga
     const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSvbBEgpj51DnHCA7yVUmhEw86dukPoxz1sDCmpI3LrqB7JTIYXif4srZCYAzKmnEiziUWsxWE-7ANc/pub?gid=0&single=true&output=csv";
+    const PROXY_URL = "https://api.allorigins.win/raw?url=" + encodeURIComponent(SHEET_URL);
 
     async function cargarBaseDeDatos() {
         const statusDiv = document.getElementById('statusDB');
         try {
-            const response = await fetch(SHEET_URL);
+            let response = await fetch(SHEET_URL).catch(() => fetch(PROXY_URL));
+            if (!response.ok) response = await fetch(PROXY_URL);
+
             const data = await response.text();
             const filas = data.split('\n').slice(1); 
             maestroDB = filas.map(fila => {
@@ -264,7 +304,7 @@
                     tipo: cols[2].trim(),
                     um: parseInt(cols[3]),
                     apilable: cols[4] ? cols[4].trim().toUpperCase() : 'S',
-                    cliente: cols[5] ? cols[5].trim() : '' // Nueva columna F
+                    cliente: cols[5] ? cols[5].trim() : ''
                 };
             }).filter(i => i !== null);
             statusDiv.innerText = `✅ Base de datos conectada (${maestroDB.length} productos)`;
@@ -302,7 +342,11 @@
         const usarBajada = document.getElementById('checkBajada').checked;
         const codCliente = document.getElementById('inputCliente').value.trim();
         const capacidad = parseInt(document.getElementById('tipoCamion').value);
+        const divAlerta = document.getElementById('alertaSkuInexistente');
         
+        divAlerta.style.display = 'none';
+        divAlerta.innerHTML = '';
+
         if (!texto) return;
 
         const lineas = texto.split('\n');
@@ -310,6 +354,7 @@
         let palletsNoApilables = 0;
         let cantAntares = 0;
         let cantPickingGen = 0;
+        let skusNoEncontrados = [];
 
         lineas.forEach(linea => {
             const columnas = linea.split('\t'); 
@@ -319,18 +364,27 @@
             const desc = columnas[1].trim().toUpperCase();
             let cant = parseInt(columnas[2].trim());
 
+            if (!sku || isNaN(cant)) return;
+
             let reglas = maestroDB.filter(i => i.sku === sku);
+
+            // Si el SKU no existe en la base de datos, lo registramos y NO se procesa
+            if (reglas.length === 0) {
+                if (!skusNoEncontrados.includes(sku)) {
+                    skusNoEncontrados.push(sku);
+                }
+                return;
+            }
+
             let reglaFinal = null;
 
             if (usarBajada && codCliente !== "") {
-                // Busca específicamente SKU + Bajada + Código de Cliente
                 reglaFinal = reglas.find(r => 
                     r.tipo.toLowerCase().includes("bajada") && 
                     r.cliente === codCliente
                 );
             }
             
-            // Si no se usa bajada, o no se encontró regla específica para ese cliente, usar Producto Terminado
             if (!reglaFinal) {
                 reglaFinal = reglas.find(r => r.tipo.toLowerCase().includes("terminado"));
             }
@@ -349,37 +403,43 @@
                 if (restoPicking > 0) {
                     desc.includes("ANTARES") ? cantAntares += restoPicking : cantPickingGen += restoPicking;
                 }
-            } else {
-                desc.includes("ANTARES") ? cantAntares += cant : cantPickingGen += cant;
             }
         });
 
+        // Mostrar advertencia si existen SKUs fuera de la BD
+        if (skusNoEncontrados.length > 0) {
+            divAlerta.innerHTML = `⚠️ <b>Atención:</b> Los siguientes SKU no existen en la base de datos (se ignoraron del cálculo):
+            <ul>${skusNoEncontrados.map(s => `<li><b>${s}</b></li>`).join('')}</ul>`;
+            divAlerta.style.display = 'block';
+        }
+
+        // Cálculo de Posiciones del Camión
         const posPallets = palletsNoApilables + Math.ceil(palletsApilables / 2);
         const posAntares = Math.ceil(cantAntares / 450);
         const posPickingGen = Math.ceil(cantPickingGen / 150);
         const ocupacionTotal = posPallets + posAntares + posPickingGen;
         
-        // Cálculo de Pallets Reales (Físicos)
+        // Cálculo de Pallets Físicos
         const palletsFisicosCerrados = palletsApilables + palletsNoApilables;
         const palletsFisicosPicking = posAntares + posPickingGen;
         const totalPalletsFisicos = palletsFisicosCerrados + palletsFisicosPicking;
 
-        // Actualizar resumen de Posiciones
+        // Actualizar resumen
         document.getElementById('resultadoTexto').innerHTML = `
             <span class="resumen-val">${ocupacionTotal} / ${capacidad} Posiciones</span>
             Pallets Cerrados: ${posPallets} | Picking: ${posAntares + posPickingGen}
         `;
 
-        // Actualizar resumen de Pallets Físicos Reales
         document.getElementById('resultadoPalletsReales').innerHTML = `
             <span class="resumen-real-val">${totalPalletsFisicos} Pallets Físicos</span>
             Cerrados: ${palletsFisicosCerrados} | Picking: ${palletsFisicosPicking}
         `;
 
+        // Dibujar posiciones en el mapa
         dibujarCamion();
         let p = 1;
-        for(let i=0; i<posPallets; i++) pintar(p++, 'ocupada-pallet', 'P');
-        for(let i=0; i<(posAntares+posPickingGen); i++) pintar(p++, 'ocupada-picking', 'PK');
+        for(let i = 0; i < posPallets; i++) pintar(p++, 'ocupada-pallet', 'P');
+        for(let i = 0; i < (posAntares + posPickingGen); i++) pintar(p++, 'ocupada-picking', 'PK');
     }
 
     function pintar(id, clase, txt) {
